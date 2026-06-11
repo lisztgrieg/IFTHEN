@@ -20,45 +20,26 @@
           <p class="eyebrow">Skills Tracker</p>
           <h1>Hertz Scoring</h1>
         </div>
-        <button class="icon-button" id="exportCsv" type="button" aria-label="Export event summaries to CSV" title="Export CSV">
-          CSV
-        </button>
+        <div class="top-actions">
+          <button class="icon-button" id="feedbackButton" type="button" aria-label="Email feedback" title="Send feedback">
+            Feedback
+          </button>
+          <button class="icon-button" id="exportCsv" type="button" aria-label="Export event summaries to CSV" title="Export CSV">
+            CSV
+          </button>
+        </div>
       </header>
 
-      <section class="trial-panel" aria-label="Event setup">
-        <label class="field">
-          <span>Your Name</span>
-          <input id="clientName" autocomplete="name" placeholder="Enter your name">
-        </label>
-        <label class="field">
-          <span>Event name</span>
-          <input id="trialName" placeholder="Give the event a title">
-        </label>
-        <label class="field">
-          <span>Date</span>
-          <input id="eventDate" type="date">
-        </label>
-        <label class="field">
-          <span>Time</span>
-          <input id="eventTime" type="time">
-        </label>
-        <label class="field">
-          <span>Outcome</span>
-          <select id="eventOutcome">
-            <option value="">Select outcome</option>
-            <option value="Resolved">Resolved</option>
-            <option value="De-escalated">De-escalated</option>
-            <option value="Unresolved">Unresolved</option>
-            <option value="Escalated">Escalated</option>
-            <option value="Paused">Paused</option>
-            <option value="Intervention">Intervention</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>Event tags</span>
-          <button class="secondary" id="openTagPicker" type="button">Choose Tags</button>
-        </label>
-        <div class="selected-tags" id="selectedTags">No tags selected</div>
+      <nav class="tabs" aria-label="Dashboard views">
+        <button class="tab active" data-tab="recorder" type="button">Score</button>
+        <button class="tab" data-tab="summary" type="button">Summary</button>
+        <button class="tab" data-tab="data" type="button">Data</button>
+        <button class="tab" data-tab="content" type="button">Content</button>
+        <button class="tab" data-tab="tools" type="button">Tools</button>
+      </nav>
+
+      <section class="dashboard" id="recorderPanel">
+      <section class="trial-panel" aria-label="Event controls">
         <div class="trial-actions">
           <button class="primary" id="startTrial" type="button">Start Event</button>
           <button class="secondary" id="pauseTrial" type="button" disabled aria-label="Pause or resume event">⏸</button>
@@ -96,29 +77,16 @@
 
       <section class="recorder" aria-label="Skill buttons">
         <div class="party-headings">
-          <label class="field participant-field">
-            <span>Party</span>
-            <input id="participantOne" placeholder="Party 1" value="Party 1">
-          </label>
+          <div class="party-display" id="partyOneDisplay">Party 1</div>
           <button class="description-toggle" id="descriptionToggle" type="button">Description</button>
-          <label class="field participant-field">
-            <span>Party</span>
-            <input id="participantTwo" placeholder="Party 2" value="Party 2">
-          </label>
+          <div class="party-display" id="partyTwoDisplay">Party 2</div>
         </div>
         <div id="descriptionBox" class="description-box hidden"></div>
         <div id="buttonStack" class="button-stack"></div>
       </section>
+      </section>
 
-      <nav class="tabs" aria-label="Dashboard views">
-        <button class="tab active" data-tab="summary" type="button">Summary</button>
-        <button class="tab" data-tab="data" type="button">Data</button>
-        <button class="tab" data-tab="creator" type="button">Creator</button>
-        <button class="tab" data-tab="tools" type="button">Tools</button>
-        <button class="tab" data-tab="shared" type="button">Shared</button>
-      </nav>
-
-      <section class="dashboard" id="summaryPanel">
+      <section class="dashboard hidden" id="summaryPanel">
         <div class="filter-row">
           <label class="field compact">
             <span>Date range</span>
@@ -398,6 +366,14 @@
         </div>
       </section>
 
+      <section class="dashboard hidden" id="contentPanel">
+        <h2>Content</h2>
+        <div class="help-card">
+          <p>Recommend a video for future Hertz scoring prompts, examples, or training material.</p>
+          <button class="primary" id="recommendVideoButton" type="button">Recommend Video</button>
+        </div>
+      </section>
+
       <section class="dashboard hidden" id="toolsPanel">
         <h2>App Tools</h2>
         <div class="metric-grid">
@@ -475,6 +451,58 @@
           <button class="secondary" id="closeWelcome" type="button">Close</button>
         </header>
         <p>Welcome, brave adventurer. The design of this app is chaotic and hectic and has a bunch of features that likely will get taken down. Thanks for looking into this. How this works is you'll fill in some blanks to name the event before you start it. You can watch a video, read a transcript, or use this as an onlooker of a confrontation or discussion really of any kind. Each clause in the conversation, or event as we call it, gets an intensity score. You tap the corresponding button between 0 and 10 as the clause is spoken. The app records the order and timing of each button. When you're done you can look through the various formats of data visualization and see what you learn. Feedback is welcome. You're invited to rip this to shreds and absolutely decimate my ego by texting them to me at 801-473-2751. The Hertz Model is the driving feature here. How the data is collected matters very little. You can save this as a web app on your phone and it will prompt you to update if there is a new version. More to come. I'll be adding the explanations of the parameters of each skill intensity here soon. This is the alpha male engaging in beta testing. I'm trying to keep the app with limited users for now as the intellectual property is not yet protected. Just remember, DATING SUCKS. - Stutters</p>
+      </section>
+    </div>
+
+    <div class="modal-backdrop hidden" id="setupModal">
+      <section class="setup-modal" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
+        <header>
+          <h2 id="setupTitle">Event Setup</h2>
+        </header>
+        <div class="setup-grid">
+          <label class="field">
+            <span>Your Name</span>
+            <input id="clientName" autocomplete="name" placeholder="Enter your name">
+          </label>
+          <label class="field">
+            <span>Event name</span>
+            <input id="trialName" placeholder="Give the event a title">
+          </label>
+          <label class="field">
+            <span>Party 1</span>
+            <input id="participantOne" placeholder="Party 1" value="Party 1">
+          </label>
+          <label class="field">
+            <span>Party 2</span>
+            <input id="participantTwo" placeholder="Party 2" value="Party 2">
+          </label>
+          <label class="field">
+            <span>Date</span>
+            <input id="eventDate" type="date">
+          </label>
+          <label class="field">
+            <span>Time</span>
+            <input id="eventTime" type="time">
+          </label>
+          <label class="field">
+            <span>Outcome</span>
+            <select id="eventOutcome">
+              <option value="">Select outcome</option>
+              <option value="Resolved">Resolved</option>
+              <option value="De-escalated">De-escalated</option>
+              <option value="Unresolved">Unresolved</option>
+              <option value="Escalated">Escalated</option>
+              <option value="Paused">Paused</option>
+              <option value="Intervention">Intervention</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Event tags</span>
+            <button class="secondary" id="openTagPicker" type="button">Choose Tags</button>
+          </label>
+          <div class="selected-tags" id="selectedTags">No tags selected</div>
+        </div>
+        <button class="primary" id="setupNext" type="button" disabled>Next</button>
       </section>
     </div>
 

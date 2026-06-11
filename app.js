@@ -15,7 +15,7 @@ const skills = [
 ];
 
 const storeKey = "communicationSkillsTracker:v1";
-const appVersion = "0.2.7";
+const appVersion = "0.2.8";
 const holdMs = 3000;
 const eventTagOptions = [
   "workplace", "family", "romantic", "public", "courtroom", "police", "mental health", "customer service",
@@ -91,6 +91,8 @@ const els = {
   descriptionToggle: document.querySelector("#descriptionToggle"),
   descriptionBox: document.querySelector("#descriptionBox"),
   buttonStack: document.querySelector("#buttonStack"),
+  feedbackButton: document.querySelector("#feedbackButton"),
+  recommendVideoButton: document.querySelector("#recommendVideoButton"),
   exportCsv: document.querySelector("#exportCsv"),
   dateFilter: document.querySelector("#dateFilter"),
   buttonFilter: document.querySelector("#buttonFilter"),
@@ -146,6 +148,10 @@ const els = {
   reloadApp: document.querySelector("#reloadApp"),
   welcomeModal: document.querySelector("#welcomeModal"),
   closeWelcome: document.querySelector("#closeWelcome"),
+  setupModal: document.querySelector("#setupModal"),
+  setupNext: document.querySelector("#setupNext"),
+  partyOneDisplay: document.querySelector("#partyOneDisplay"),
+  partyTwoDisplay: document.querySelector("#partyTwoDisplay"),
   trialList: document.querySelector("#trialList"),
   sharedList: document.querySelector("#sharedList")
 };
@@ -706,6 +712,8 @@ function renderStatus() {
   const trial = activeTrial();
   const p1Events = trial ? trial.events.filter((event) => (event.participantKey || "participant1") === "participant1") : [];
   const p2Events = trial ? trial.events.filter((event) => (event.participantKey || "participant1") === "participant2") : [];
+  els.partyOneDisplay.textContent = els.participantOne.value.trim() || "Party 1";
+  els.partyTwoDisplay.textContent = els.participantTwo.value.trim() || "Party 2";
   els.activeTrialLabel.textContent = trial ? trial.name : "No trial";
   els.totalTaps.textContent = trial ? totalFor(trial) : "0";
   els.averageScore.textContent = trial ? averageFor(trial).toFixed(2) : "0.00";
@@ -2104,10 +2112,26 @@ function renderReminderNotes() {
     "r1: Define the final description/rules text for every skill button.",
     "r2: Decide how recommended videos should be curated or imported.",
     "r3: Define exact redundancy rules for comparing multiple scorers on the same video.",
-    "r4: Choose where the PWA files will be hosted for iPhone install/update.",
-    "r5: Add spider charts for profiles."
+    "r4: Build WordPress site.",
+    "r5: Update YouTube name to !FTHEN.",
+    "r6: Make TikTok account.",
+    "r7: Make Instagram account.",
+    "r8: Build Facebook page.",
+    "r9: Create email list for newsletter."
   ];
   els.reminderNotes.innerHTML = notes.map((note) => `<p>${escapeHtml(note)}</p>`).join("");
+}
+
+function openExternalForm(url) {
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function openFeedbackSurvey() {
+  openExternalForm("https://docs.google.com/forms/d/e/1FAIpQLSeSKK6gB5GX1oInJ7QBQ8oHw_HKiGPiu4_Z_NJWH-cpOCXzZQ/viewform?usp=publish-editor");
+}
+
+function openRecommendVideoSurvey() {
+  openExternalForm("https://docs.google.com/forms/d/e/1FAIpQLSemA3Vx_F6U4WSd4DAbPYvTPfLeDV_fLYwxoT0pdcve2qTQdw/viewform?usp=publish-editor");
 }
 
 function creatorTrial() {
@@ -2306,10 +2330,81 @@ function profileSummary(profile) {
 function profileCharts(profile) {
   const row = document.createElement("div");
   row.className = "chart-row";
+  row.append(profileSpiderPanel("Skill Spider", profile.events));
   row.append(profilePiePanel("Skills", profile.events));
   row.append(profileBarPanel("Skill Totals", profile.events));
   row.append(profileCategoryPanel("5's", profile.events));
   return row;
+}
+
+function profileSpiderPanel(title, events) {
+  const panel = document.createElement("div");
+  panel.className = "mini-chart";
+  const heading = document.createElement("h3");
+  heading.textContent = title;
+  panel.append(heading, profileSpiderSvg(events));
+  return panel;
+}
+
+function profileSpiderSvg(events) {
+  const counts = skillCountMap(events);
+  const max = Math.max(1, ...Object.values(counts));
+  const cx = 120;
+  const cy = 112;
+  const radius = 72;
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "profile-spider");
+  svg.setAttribute("viewBox", "0 0 240 230");
+
+  [0.25, 0.5, 0.75, 1].forEach((scale) => {
+    const ring = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    ring.setAttribute("points", spiderPoints(skills.map(() => scale), cx, cy, radius));
+    ring.setAttribute("fill", "none");
+    ring.setAttribute("stroke", "#d7dee8");
+    ring.setAttribute("stroke-width", "1");
+    svg.append(ring);
+  });
+
+  skills.forEach((skill, index) => {
+    const angle = spiderAngle(index);
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+    const axis = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    axis.setAttribute("x1", cx);
+    axis.setAttribute("y1", cy);
+    axis.setAttribute("x2", x);
+    axis.setAttribute("y2", y);
+    axis.setAttribute("stroke", "#e8edf3");
+    svg.append(axis);
+
+    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    label.setAttribute("x", cx + Math.cos(angle) * (radius + 18));
+    label.setAttribute("y", cy + Math.sin(angle) * (radius + 18));
+    label.setAttribute("text-anchor", "middle");
+    label.setAttribute("dominant-baseline", "middle");
+    label.textContent = skill.value;
+    svg.append(label);
+  });
+
+  const values = skills.map((skill) => (counts[skill.value] || 0) / max);
+  const shape = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+  shape.setAttribute("points", spiderPoints(values, cx, cy, radius));
+  shape.setAttribute("fill", "rgba(18,104,179,.34)");
+  shape.setAttribute("stroke", "#1268b3");
+  shape.setAttribute("stroke-width", "3");
+  svg.append(shape);
+  return svg;
+}
+
+function spiderAngle(index) {
+  return (Math.PI * 2 * index / skills.length) - Math.PI / 2;
+}
+
+function spiderPoints(values, cx, cy, radius) {
+  return values.map((value, index) => {
+    const angle = spiderAngle(index);
+    return `${cx + Math.cos(angle) * radius * value},${cy + Math.sin(angle) * radius * value}`;
+  }).join(" ");
 }
 
 function profilePiePanel(title, events) {
@@ -2371,6 +2466,7 @@ function comparePanel(profile) {
     ],
     "No data."
   ));
+  panel.append(profileSpiderPanel("Skill Spider", profile.events));
   panel.append(profileBarPanel("Skill Totals", profile.events));
   panel.append(profileCategoryPanel("5's Totals", profile.events));
   return panel;
@@ -2727,9 +2823,11 @@ function escapeHtml(value) {
 
 function switchTab(tabName) {
   document.querySelectorAll(".tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === tabName));
+  document.querySelector("#recorderPanel").classList.toggle("hidden", tabName !== "recorder");
   document.querySelector("#summaryPanel").classList.toggle("hidden", tabName !== "summary");
   document.querySelector("#dataPanel").classList.toggle("hidden", tabName !== "data");
   document.querySelector("#creatorPanel").classList.toggle("hidden", tabName !== "creator");
+  document.querySelector("#contentPanel").classList.toggle("hidden", tabName !== "content");
   document.querySelector("#toolsPanel").classList.toggle("hidden", tabName !== "tools");
   document.querySelector("#sharedPanel").classList.toggle("hidden", tabName !== "shared");
 }
@@ -2758,6 +2856,37 @@ function showWelcomeModal() {
 
 function closeWelcomeModal() {
   els.welcomeModal.classList.add("hidden");
+  showSetupModal();
+}
+
+function setupFieldsComplete() {
+  return [
+    els.clientName.value,
+    els.trialName.value,
+    els.participantOne.value,
+    els.participantTwo.value
+  ].every((value) => value.trim());
+}
+
+function validateSetupModal() {
+  els.setupNext.disabled = !setupFieldsComplete();
+  els.partyOneDisplay.textContent = els.participantOne.value.trim() || "Party 1";
+  els.partyTwoDisplay.textContent = els.participantTwo.value.trim() || "Party 2";
+}
+
+function showSetupModal() {
+  els.setupModal.classList.remove("hidden");
+  validateSetupModal();
+}
+
+function closeSetupModal() {
+  if (!setupFieldsComplete()) {
+    validateSetupModal();
+    return;
+  }
+  els.setupModal.classList.add("hidden");
+  switchTab("recorder");
+  render();
 }
 
 function render() {
@@ -2780,6 +2909,8 @@ els.closeTagModal.addEventListener("click", closeOrFinishTagModal);
 els.saveTags.addEventListener("click", saveSelectedTags);
 els.finishFromTags.addEventListener("click", finishAfterTags);
 els.descriptionToggle.addEventListener("click", toggleDescriptions);
+els.feedbackButton.addEventListener("click", openFeedbackSurvey);
+els.recommendVideoButton.addEventListener("click", openRecommendVideoSurvey);
 els.exportCsv.addEventListener("click", exportCsv);
 els.saveVideoMeta.addEventListener("click", saveVideoMeta);
 els.addRecommendedVideo.addEventListener("click", addRecommendedVideo);
@@ -2790,6 +2921,10 @@ els.importBackup.addEventListener("change", importBackup);
 els.loadDemo.addEventListener("click", loadDemoEvent);
 els.clearData.addEventListener("click", clearData);
 els.closeWelcome.addEventListener("click", closeWelcomeModal);
+els.setupNext.addEventListener("click", closeSetupModal);
+[els.clientName, els.trialName, els.participantOne, els.participantTwo].forEach((input) => {
+  input.addEventListener("input", validateSetupModal);
+});
 window.addEventListener("online", renderConnectionStatus);
 window.addEventListener("offline", renderConnectionStatus);
 els.dateFilter.addEventListener("change", renderDashboard);
@@ -2804,6 +2939,7 @@ registerServiceWorker();
 setupFilters();
 renderTagGrid();
 render();
+switchTab("recorder");
 showWelcomeModal();
 
 function registerServiceWorker() {

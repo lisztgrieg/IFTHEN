@@ -5,5 +5,9 @@ These should be carried forward until resolved, removed, or the user asks to sto
 - r1: Define the final description/rules text for each skill button: Passivity, Rapport, Diplomacy, Restraint, Information, Correction, Moralization, Dominance, Aggression, Volume, Force, Lethality, War.
 - r2: Decide how recommended videos should be curated/imported.
 - r3: Define exact redundancy rules for comparing multiple scorers on the same video.
-- r4: Choose where the PWA files will be hosted for iPhone install/update.
-- r5: Add spider charts for profiles.
+- r4: Build WordPress site.
+- r5: Update YouTube name to !FTHEN.
+- r6: Make TikTok account.
+- r7: Make Instagram account.
+- r8: Build Facebook page.
+- r9: Create email list for newsletter.

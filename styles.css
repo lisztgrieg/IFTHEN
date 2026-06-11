@@ -51,6 +51,12 @@ select {
   border-bottom: 1px solid var(--line);
 }
 
+.top-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
 .eyebrow {
   margin: 0 0 2px;
   color: var(--muted);
@@ -80,7 +86,7 @@ h2 {
 
 .trial-panel {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 5px;
   border-bottom: 1px solid var(--line);
 }
@@ -250,6 +256,21 @@ button:disabled {
   min-height: 24px;
   padding: 3px 5px;
   font-size: 12px;
+  text-align: center;
+}
+
+.party-display {
+  width: min(100%, 150px);
+  min-height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 5px 7px;
+  color: var(--ink);
+  background: #f7f9fb;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 800;
   text-align: center;
 }
 
@@ -721,6 +742,18 @@ button:disabled {
   width: 100%;
   height: 132px;
   display: block;
+}
+
+.profile-spider {
+  width: 100%;
+  min-height: 220px;
+  display: block;
+}
+
+.profile-spider text {
+  fill: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
 }
 
 .mock-chips,
@@ -1336,7 +1369,8 @@ button:disabled {
 }
 
 .tag-modal,
-.welcome-modal {
+.welcome-modal,
+.setup-modal {
   width: min(100%, 560px);
   max-height: 86vh;
   display: grid;
@@ -1349,11 +1383,19 @@ button:disabled {
 }
 
 .tag-modal header,
-.welcome-modal header {
+.welcome-modal header,
+.setup-modal header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.setup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  overflow: auto;
 }
 
 .welcome-modal p {
