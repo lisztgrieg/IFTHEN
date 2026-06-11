@@ -15,7 +15,7 @@ const skills = [
 ];
 
 const storeKey = "communicationSkillsTracker:v1";
-const appVersion = "0.2.6";
+const appVersion = "0.2.7";
 const holdMs = 3000;
 const eventTagOptions = [
   "workplace", "family", "romantic", "public", "courtroom", "police", "mental health", "customer service",
@@ -45,6 +45,7 @@ let activeTrialId = state.activeTrialId;
 let holdTimer = null;
 let suppressNextClick = false;
 let tagModalIsFinishing = false;
+let activeDataView = "tag-frequency";
 
 const els = {
   clientName: document.querySelector("#clientName"),
@@ -125,6 +126,9 @@ const els = {
   dataVideoFilter: document.querySelector("#dataVideoFilter"),
   dataFilterSummary: document.querySelector("#dataFilterSummary"),
   dataVizIdeas: document.querySelector("#dataVizIdeas"),
+  dataViewContent: document.querySelector("#dataViewContent"),
+  layoutExperiments: document.querySelector("#layoutExperiments"),
+  vizPlayground: document.querySelector("#vizPlayground"),
   profileSelect: document.querySelector("#profileSelect"),
   compareA: document.querySelector("#compareA"),
   compareB: document.querySelector("#compareB"),
@@ -140,6 +144,8 @@ const els = {
   reminderNotes: document.querySelector("#reminderNotes"),
   updateToast: document.querySelector("#updateToast"),
   reloadApp: document.querySelector("#reloadApp"),
+  welcomeModal: document.querySelector("#welcomeModal"),
+  closeWelcome: document.querySelector("#closeWelcome"),
   trialList: document.querySelector("#trialList"),
   sharedList: document.querySelector("#sharedList")
 };
@@ -1558,24 +1564,414 @@ function renderDataFilterSummary(trials, allTrials) {
 }
 
 function renderDataVizIdeas() {
-  const ideas = [
-    ["Tag Frequency", "Which contexts show up most often."],
-    ["Tag To Outcome", "Which tags tend to appear with each final outcome."],
-    ["Party Radar", "Compare party skill profiles at a glance."],
-    ["Transition Network", "Show common skill-to-skill movement paths."],
-    ["Intensity By Tag", "Average score grouped by event context."],
-    ["Outcome Scatter", "Plot average and floor score against outcome."],
-    ["Intensity Timeline", "Show events as bands from low to high intensity."],
-    ["Party/Tag Heatmap", "Find which parties use which skills in each context."],
-    ["Scorer Agreement", "Compare redundancy when multiple users score the same video."],
-    ["Turning Points", "See where escalation shifts usually happen."]
-  ];
-  els.dataVizIdeas.innerHTML = ideas.map(([title, text]) => `
-    <article class="idea-card">
-      <h3>${escapeHtml(title)}</h3>
-      <p>${escapeHtml(text)}</p>
-    </article>
+  els.dataVizIdeas.innerHTML = dataViewModes().map((view) => `
+    <button class="idea-card ${view.id === activeDataView ? "active" : ""}" type="button" data-view="${escapeHtml(view.id)}">
+      <span>${escapeHtml(view.title)}</span>
+    </button>
   `).join("");
+  renderActiveDataView(filteredDataTrials(completedTrials()));
+  renderLayoutExperiments();
+  renderVizPlayground();
+}
+
+function dataViewModes() {
+  return [
+    { id: "tag-frequency", title: "Tag Frequency" },
+    { id: "tag-outcome", title: "Tag To Outcome" },
+    { id: "party-radar", title: "Party Profile" },
+    { id: "transition-network", title: "Transitions" },
+    { id: "intensity-tag", title: "Intensity By Tag" },
+    { id: "outcome-scatter", title: "Outcome Map" },
+    { id: "intensity-timeline", title: "Intensity Timeline" },
+    { id: "party-tag", title: "Party/Tag Heatmap" },
+    { id: "scorer-agreement", title: "Scorer Agreement" },
+    { id: "turning-points", title: "Turning Points" }
+  ];
+}
+
+function renderActiveDataView(trials) {
+  els.dataViewContent.innerHTML = "";
+  const events = sortedEvents(trials);
+  const view = {
+    "tag-frequency": () => simpleTable(["Tag", "Events"], tagFrequencyRows(trials), "No tags in filtered events."),
+    "tag-outcome": () => simpleTable(["Tag", "Outcome", "Events"], tagOutcomeRows(trials), "No tagged outcomes yet."),
+    "party-radar": () => simpleTable(["Party", "Events", "Nodes", "Avg", "Floor", "Mode"], partyProfileRows(events), "No party data yet."),
+    "transition-network": () => transitionTable(events),
+    "intensity-tag": () => simpleTable(["Tag", "Avg", "Nodes"], intensityByTagRows(trials), "No tag intensity data yet."),
+    "outcome-scatter": () => simpleTable(["Outcome", "Event", "Avg", "Floor", "Peak"], outcomeMapRows(trials), "No outcomes yet."),
+    "intensity-timeline": () => simpleTable(["Event", "Started", "Avg", "Peak", "Tags"], intensityTimelineRows(trials), "No events yet."),
+    "party-tag": () => simpleTable(["Tag", "Party", "Nodes", "Avg"], partyTagRows(trials), "No party/tag data yet."),
+    "scorer-agreement": () => simpleTable(["Video", "Events", "Avg Spread"], scorerAgreementRows(trials), "Score the same video more than once to compare scorers."),
+    "turning-points": () => simpleTable(["Event", "Turning Point", "Detected"], turningPointRows(trials), "No turning points detected yet.")
+  }[activeDataView];
+  els.dataViewContent.append(view ? view() : simpleTable(["View"], [], "Choose a view."));
+}
+
+function tagFrequencyRows(trials) {
+  const counts = {};
+  trials.forEach((trial) => (trial.tags || []).forEach((tag) => counts[tag] = (counts[tag] || 0) + 1));
+  return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+}
+
+function tagOutcomeRows(trials) {
+  const counts = {};
+  trials.forEach((trial) => {
+    (trial.tags || []).forEach((tag) => {
+      const outcome = trial.outcome || "Not set";
+      const key = `${tag}||${outcome}`;
+      counts[key] = (counts[key] || 0) + 1;
+    });
+  });
+  return Object.entries(counts)
+    .map(([key, count]) => [...key.split("||"), count])
+    .sort((a, b) => b[2] - a[2]);
+}
+
+function partyProfileRows(events) {
+  const profiles = {};
+  events.forEach((event) => {
+    const name = displayParticipant(event);
+    if (!profiles[name]) profiles[name] = { events: [], trials: new Set() };
+    profiles[name].events.push(event);
+    profiles[name].trials.add(event.trialId);
+  });
+  return Object.entries(profiles).map(([name, profile]) => [
+    name,
+    profile.trials.size,
+    profile.events.length,
+    averageEvents(profile.events).toFixed(2),
+    floorFor(profile.events) ?? "None",
+    modeFor(profile.events)
+  ]);
+}
+
+function intensityByTagRows(trials) {
+  const groups = {};
+  trials.forEach((trial) => {
+    (trial.tags || []).forEach((tag) => {
+      if (!groups[tag]) groups[tag] = [];
+      groups[tag].push(...trial.events);
+    });
+  });
+  return Object.entries(groups)
+    .map(([tag, events]) => [tag, averageEvents(events).toFixed(2), events.length])
+    .sort((a, b) => Number(b[1]) - Number(a[1]));
+}
+
+function outcomeMapRows(trials) {
+  return trials.map((trial) => [
+    trial.outcome || "Not set",
+    trial.name,
+    averageEvents(trial.events).toFixed(2),
+    floorFor(trial.events) ?? "None",
+    peakFor(trial.events) ?? "None"
+  ]);
+}
+
+function intensityTimelineRows(trials) {
+  return trials
+    .slice()
+    .sort((a, b) => new Date(a.startedAt) - new Date(b.startedAt))
+    .map((trial) => [
+      trial.name,
+      new Date(trial.startedAt).toLocaleDateString(),
+      averageEvents(trial.events).toFixed(2),
+      peakFor(trial.events) ?? "None",
+      tagText(trial.tags)
+    ]);
+}
+
+function partyTagRows(trials) {
+  const groups = {};
+  sortedEvents(trials).forEach((event) => {
+    const trial = trials.find((item) => item.id === event.trialId);
+    (trial?.tags || []).forEach((tag) => {
+      const key = `${tag}||${displayParticipant(event)}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(event);
+    });
+  });
+  return Object.entries(groups)
+    .map(([key, events]) => [...key.split("||"), events.length, averageEvents(events).toFixed(2)])
+    .sort((a, b) => b[2] - a[2]);
+}
+
+function scorerAgreementRows(trials) {
+  const groups = {};
+  trials.forEach((trial) => {
+    const url = trial.video?.url;
+    if (!url) return;
+    if (!groups[url]) groups[url] = [];
+    groups[url].push(averageEvents(trial.events));
+  });
+  return Object.entries(groups)
+    .filter(([, averages]) => averages.length > 1)
+    .map(([url, averages]) => [url, averages.length, (Math.max(...averages) - Math.min(...averages)).toFixed(2)]);
+}
+
+function displayParticipant(event) {
+  return event.participant || event.participantName || event.participantKey || "Party";
+}
+
+function turningPointRows(trials) {
+  return trials.flatMap((trial) => turningPoints(trial).map((point) => [trial.name, point[0], point[1]]));
+}
+
+function dataLabTrials() {
+  const trials = filteredDataTrials(completedTrials());
+  if (trials.length) return trials;
+  return [{
+    id: "sample",
+    name: "Sample Event",
+    client: "Sample User",
+    participants: { participant1: "Party 1", participant2: "Party 2" },
+    tags: ["family", "romantic", "public"],
+    outcome: "Unresolved",
+    video: { url: "sample-video" },
+    startedAt: new Date().toISOString(),
+    events: skills.map((skill, index) => ({
+      trialId: "sample",
+      participant: index % 2 ? "Party 2" : "Party 1",
+      participantKey: index % 2 ? "participant2" : "participant1",
+      value: skill.value,
+      numeric: skill.numeric,
+      label: skill.label,
+      timestamp: new Date(Date.now() + index * 1000).toISOString(),
+      sequenceNumber: index + 1
+    }))
+  }];
+}
+
+function dataLabEvents() {
+  return sortedEvents(dataLabTrials());
+}
+
+function renderLayoutExperiments() {
+  const trials = dataLabTrials();
+  const events = sortedEvents(trials);
+  const topTags = tagFrequencyRows(trials).slice(0, 4);
+  const rows = partyProfileRows(events).slice(0, 4);
+  const layouts = [
+    ["View-mode buttons", chipRow(dataViewModes().slice(0, 6).map((view) => view.title))],
+    ["Collapsible sections", miniDetails(["Summary", "Charts", "Events"])],
+    ["Sticky filter bar", `<div class="mock-sticky">${["Date", "Tag", "Party", "Skill"].map((x) => `<span>${x}</span>`).join("")}</div>`],
+    ["Bottom-sheet detail", `<div class="mock-phone"><div class="mock-content"></div><div class="mock-sheet">Event details drawer</div></div>`],
+    ["Expandable cards", miniDetails(trials.slice(0, 3).map((trial) => trial.name))],
+    ["Saved presets", chipRow(["Family + High", "Party 1", "With video", "Unresolved"])],
+    ["Compare toggle", `<div class="mock-toggle"><span>Single</span><strong>Compare</strong></div>`],
+    ["Focus party", chipRow([...new Set(events.map(displayParticipant))].slice(0, 4))],
+    ["Tagged-only switch", `<div class="mock-toggle"><strong>Tagged</strong><span>All</span></div>`],
+    ["Compact / detailed", `<div class="mock-toggle"><strong>Compact</strong><span>Detailed</span></div>`],
+    ["Dashboard tiles", metricMini([["Events", trials.length], ["Nodes", events.length], ["Avg", averageEvents(events).toFixed(1)]])],
+    ["Horizontal swipe", `<div class="mock-swipe">${["A", "B", "C", "D"].map((x) => `<span>Panel ${x}</span>`).join("")}</div>`],
+    ["Split screen", `<div class="mock-split"><div>Filters</div><div>Results</div></div>`],
+    ["Sort controls", chipRow(["Newest", "Highest avg", "Most nodes", "Most tags"])],
+    ["Pinned charts", `<div class="mock-pins"><strong>Pinned: Tag Frequency</strong><strong>Avg Trend</strong></div>`],
+    ["Hide empty views", chipRow(dataViewModes().slice(0, 4).map((view) => `${view.title}: on`))],
+    ["Event search", `<div class="mock-search">Search events, tags, parties</div>`],
+    ["Tag groups", chipRow(topTags.map(([tag]) => tag || "No tag"))],
+    ["Insights panel", simpleList(["Top tag: " + (topTags[0]?.[0] || "None"), "Avg: " + averageEvents(events).toFixed(2), "Mode: " + modeFor(events)])],
+    ["Report mode", `<div class="mock-report"><h4>One-page report</h4><p>Summary + charts + selected events</p></div>`]
+  ];
+  els.layoutExperiments.innerHTML = layouts.map(([title, body]) => experimentCard(title, body)).join("");
+}
+
+function renderVizPlayground() {
+  const trials = dataLabTrials();
+  const events = sortedEvents(trials);
+  const counts = skillCountMap(events);
+  const viz = [
+    ["Spider/Radar", radarSvg(skillValuesForChart(counts))],
+    ["Heatmap", heatmapHtml(events)],
+    ["Sankey", sankeyMock(events)],
+    ["Line chart", sparklineSvg(events.map((event) => event.numeric))],
+    ["Bar chart", barMiniHtml(Object.entries(counts).slice(0, 8))],
+    ["Stacked bar", stackedBarHtml(categoryCounts(events))],
+    ["Donut chart", donutSvg(categoryCounts(events))],
+    ["Scatter plot", scatterSvg(trials)],
+    ["Bubble chart", bubbleSvg(tagFrequencyRows(trials))],
+    ["Timeline", timelineHtml(events.slice(0, 12))],
+    ["Calendar heatmap", calendarHeatHtml(trials)],
+    ["Transition matrix", matrixHtml(events)],
+    ["Network graph", networkSvg(events)],
+    ["Box plot", boxPlotSvg(events.map((event) => event.numeric))],
+    ["Histogram", histogramHtml(events.map((event) => event.numeric))],
+    ["Treemap", treemapHtml(Object.entries(counts).slice(0, 6))],
+    ["Small multiples", smallMultiplesHtml(trials.slice(0, 4))],
+    ["Scorecard tiles", metricMini([["Avg", averageEvents(events).toFixed(2)], ["Floor", floorFor(events) ?? "None"], ["Peak", peakFor(events) ?? "None"], ["Mode", modeFor(events)]])],
+    ["Funnel chart", funnelHtml([["Events", trials.length], ["Tagged", trials.filter((t) => t.tags?.length).length], ["With video", trials.filter((t) => t.video?.url).length], ["High peak", trials.filter((t) => (peakFor(t.events) || 0) >= 8).length]])],
+    ["Parallel coordinates", parallelSvg(trials.slice(0, 6))]
+  ];
+  els.vizPlayground.innerHTML = viz.map(([title, body]) => experimentCard(title, body)).join("");
+}
+
+function experimentCard(title, body) {
+  return `<article class="experiment-card"><h3>${escapeHtml(title)}</h3><div>${body}</div></article>`;
+}
+
+function chipRow(items) {
+  return `<div class="mock-chips">${items.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>`;
+}
+
+function miniDetails(items) {
+  return items.map((item, index) => `<details ${index === 0 ? "open" : ""}><summary>${escapeHtml(item)}</summary><p>Compact preview with deeper data tucked away.</p></details>`).join("");
+}
+
+function metricMini(items) {
+  return `<div class="mock-metrics">${items.map(([label, value]) => `<span><em>${escapeHtml(label)}</em><strong>${escapeHtml(value)}</strong></span>`).join("")}</div>`;
+}
+
+function simpleList(items) {
+  return `<ul class="mock-list">${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+}
+
+function skillCountMap(events) {
+  const counts = {};
+  skills.forEach((skill) => counts[skill.value] = 0);
+  events.forEach((event) => counts[event.value] = (counts[event.value] || 0) + 1);
+  return counts;
+}
+
+function skillValuesForChart(counts) {
+  const max = Math.max(1, ...Object.values(counts));
+  return skills.map((skill) => (counts[skill.value] || 0) / max);
+}
+
+function radarSvg(values) {
+  const cx = 90;
+  const cy = 82;
+  const r = 58;
+  const points = values.map((value, index) => {
+    const angle = (Math.PI * 2 * index / values.length) - Math.PI / 2;
+    return `${cx + Math.cos(angle) * r * value},${cy + Math.sin(angle) * r * value}`;
+  }).join(" ");
+  const grid = [0.33, 0.66, 1].map((scale) => {
+    const poly = values.map((_, index) => {
+      const angle = (Math.PI * 2 * index / values.length) - Math.PI / 2;
+      return `${cx + Math.cos(angle) * r * scale},${cy + Math.sin(angle) * r * scale}`;
+    }).join(" ");
+    return `<polygon points="${poly}" fill="none" stroke="#d7dee8" />`;
+  }).join("");
+  return `<svg class="mini-svg" viewBox="0 0 180 160">${grid}<polygon points="${points}" fill="rgba(18,104,179,.34)" stroke="#1268b3" stroke-width="2" /></svg>`;
+}
+
+function heatmapHtml(events) {
+  const rows = ["5 Down", "5 Alone", "5 Up"];
+  const cols = ["Party 1", "Party 2"];
+  return `<div class="mock-heat">${rows.map((row) => cols.map((col) => {
+    const count = events.filter((event) => categoryFor(event) === row && displayParticipant(event) === col).length;
+    return `<span style="opacity:${Math.max(0.25, Math.min(1, count / 5 + 0.25))}">${row}<b>${count}</b></span>`;
+  }).join("")).join("")}</div>`;
+}
+
+function sankeyMock(events) {
+  return `<div class="mock-sankey"><span>Low</span><i></i><span>Mid</span><i></i><span>High</span><strong>${events.length} nodes</strong></div>`;
+}
+
+function sparklineSvg(values) {
+  const nums = values.length ? values : [0];
+  const points = nums.map((value, index) => {
+    const x = nums.length === 1 ? 90 : 12 + (index / (nums.length - 1)) * 156;
+    const y = 140 - (value / 10) * 120;
+    return `${x},${y}`;
+  }).join(" ");
+  return `<svg class="mini-svg" viewBox="0 0 180 160"><polyline points="${points}" fill="none" stroke="#1268b3" stroke-width="3" /></svg>`;
+}
+
+function barMiniHtml(entries) {
+  const max = Math.max(1, ...entries.map(([, value]) => value));
+  return `<div class="mock-bars">${entries.map(([label, value]) => `<span><b>${escapeHtml(label)}</b><i style="width:${(value / max) * 100}%"></i><em>${value}</em></span>`).join("")}</div>`;
+}
+
+function stackedBarHtml(counts) {
+  const total = Math.max(1, Object.values(counts).reduce((sum, value) => sum + value, 0));
+  return `<div class="mock-stack">${Object.entries(counts).map(([label, value], index) => `<span style="width:${(value / total) * 100}%;background:${pieColor(index)}" title="${escapeHtml(label)}"></span>`).join("")}</div>${chipRow(Object.keys(counts))}`;
+}
+
+function donutSvg(counts) {
+  const total = Math.max(1, Object.values(counts).reduce((sum, value) => sum + value, 0));
+  let offset = 25;
+  const rings = Object.values(counts).map((value, index) => {
+    const len = (value / total) * 75;
+    const ring = `<circle cx="90" cy="80" r="48" fill="none" stroke="${pieColor(index)}" stroke-width="24" stroke-dasharray="${len} ${100 - len}" stroke-dashoffset="${offset}" />`;
+    offset -= len;
+    return ring;
+  }).join("");
+  return `<svg class="mini-svg" viewBox="0 0 180 160">${rings}<circle cx="90" cy="80" r="28" fill="#fff" /></svg>`;
+}
+
+function scatterSvg(trials) {
+  const points = trials.map((trial) => {
+    const x = 18 + (Math.min(10, averageEvents(trial.events)) / 10) * 144;
+    const y = 140 - ((peakFor(trial.events) || 0) / 10) * 120;
+    return `<circle cx="${x}" cy="${y}" r="5" fill="#1268b3" />`;
+  }).join("");
+  return `<svg class="mini-svg" viewBox="0 0 180 160"><path d="M18 20V140H164" fill="none" stroke="#d7dee8" />${points}</svg>`;
+}
+
+function bubbleSvg(rows) {
+  const data = rows.slice(0, 6);
+  return `<svg class="mini-svg" viewBox="0 0 180 160">${data.map(([tag, count], index) => `<circle cx="${35 + (index % 3) * 55}" cy="${45 + Math.floor(index / 3) * 55}" r="${10 + count * 3}" fill="${pieColor(index)}" opacity=".75"><title>${escapeHtml(tag)}</title></circle>`).join("")}</svg>`;
+}
+
+function timelineHtml(events) {
+  return `<div class="mock-timeline">${events.map((event) => `<span style="bottom:${event.numeric * 8}%">${escapeHtml(event.value)}</span>`).join("")}</div>`;
+}
+
+function calendarHeatHtml(trials) {
+  return `<div class="mock-calendar">${Array.from({ length: 28 }, (_, index) => {
+    const count = trials[index % Math.max(1, trials.length)]?.events.length || 0;
+    return `<span style="opacity:${Math.max(.2, Math.min(1, count / 20))}"></span>`;
+  }).join("")}</div>`;
+}
+
+function matrixHtml(events) {
+  const cats = ["5 Down", "5 Alone", "5 Up"];
+  return `<div class="mock-matrix">${cats.flatMap((from) => cats.map((to) => {
+    const count = transitionCounts(events, categoryFor)[from]?.[to] || 0;
+    return `<span>${from.replace("5 ", "")}->${to.replace("5 ", "")}<b>${count}</b></span>`;
+  })).join("")}</div>`;
+}
+
+function networkSvg(events) {
+  const links = Object.entries(transitionCounts(events)).slice(0, 6);
+  return `<svg class="mini-svg" viewBox="0 0 180 160"><circle cx="45" cy="80" r="18" fill="#8ab17d"/><circle cx="90" cy="40" r="18" fill="#e9c46a"/><circle cx="135" cy="95" r="18" fill="#e76f51"/>${links.map((_, index) => `<path d="M45 80 C80 ${20 + index * 18}, 105 ${45 + index * 12}, 135 95" fill="none" stroke="#17202a" opacity=".25"/>`).join("")}</svg>`;
+}
+
+function boxPlotSvg(values) {
+  const nums = values.length ? values.slice().sort((a, b) => a - b) : [0];
+  const q = (p) => nums[Math.floor((nums.length - 1) * p)];
+  const scale = (v) => 20 + (v / 10) * 140;
+  return `<svg class="mini-svg" viewBox="0 0 180 160"><line x1="${scale(nums[0])}" y1="80" x2="${scale(nums.at(-1))}" y2="80" stroke="#17202a"/><rect x="${scale(q(.25))}" y="55" width="${Math.max(4, scale(q(.75)) - scale(q(.25)))}" height="50" fill="#e9f1f8" stroke="#1268b3"/><line x1="${scale(q(.5))}" y1="52" x2="${scale(q(.5))}" y2="108" stroke="#1268b3" stroke-width="3"/></svg>`;
+}
+
+function histogramHtml(values) {
+  const bins = [0, 0, 0, 0, 0];
+  values.forEach((value) => bins[Math.min(4, Math.floor(value / 2.01))] += 1);
+  return barMiniHtml(bins.map((value, index) => [`${index * 2}-${index * 2 + 2}`, value]));
+}
+
+function treemapHtml(entries) {
+  const total = Math.max(1, entries.reduce((sum, [, value]) => sum + value, 0));
+  return `<div class="mock-tree">${entries.map(([label, value], index) => `<span style="flex:${value || 1};background:${pieColor(index)}">${escapeHtml(label)}</span>`).join("")}</div>`;
+}
+
+function smallMultiplesHtml(trials) {
+  return `<div class="mock-small">${trials.map((trial) => `<div><strong>${escapeHtml(trial.name)}</strong>${sparklineSvg(trial.events.map((event) => event.numeric))}</div>`).join("")}</div>`;
+}
+
+function funnelHtml(rows) {
+  const max = Math.max(1, ...rows.map(([, value]) => value));
+  return `<div class="mock-funnel">${rows.map(([label, value]) => `<span style="width:${Math.max(14, (value / max) * 100)}%">${escapeHtml(label)} ${value}</span>`).join("")}</div>`;
+}
+
+function parallelSvg(trials) {
+  const axes = [30, 75, 120, 165];
+  const lines = trials.map((trial, index) => {
+    const vals = [averageEvents(trial.events), floorFor(trial.events) || 0, peakFor(trial.events) || 0, trial.events.length / 2];
+    return `<polyline points="${vals.map((value, i) => `${axes[i]},${140 - Math.min(10, value) * 12}`).join(" ")}" fill="none" stroke="${pieColor(index)}" opacity=".7" />`;
+  }).join("");
+  return `<svg class="mini-svg" viewBox="0 0 190 160">${axes.map((x) => `<line x1="${x}" y1="20" x2="${x}" y2="140" stroke="#d7dee8"/>`).join("")}${lines}</svg>`;
 }
 
 function toggleDescriptions() {
@@ -1708,7 +2104,8 @@ function renderReminderNotes() {
     "r1: Define the final description/rules text for every skill button.",
     "r2: Decide how recommended videos should be curated or imported.",
     "r3: Define exact redundancy rules for comparing multiple scorers on the same video.",
-    "r4: Choose where the PWA files will be hosted for iPhone install/update."
+    "r4: Choose where the PWA files will be hosted for iPhone install/update.",
+    "r5: Add spider charts for profiles."
   ];
   els.reminderNotes.innerHTML = notes.map((note) => `<p>${escapeHtml(note)}</p>`).join("");
 }
@@ -2347,6 +2744,20 @@ function setupFilters() {
   document.querySelectorAll("#dataPanel select").forEach((select) => {
     select.addEventListener("change", renderTrials);
   });
+  els.dataVizIdeas.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-view]");
+    if (!button) return;
+    activeDataView = button.dataset.view;
+    renderTrials();
+  });
+}
+
+function showWelcomeModal() {
+  els.welcomeModal.classList.remove("hidden");
+}
+
+function closeWelcomeModal() {
+  els.welcomeModal.classList.add("hidden");
 }
 
 function render() {
@@ -2378,6 +2789,7 @@ els.exportBackup.addEventListener("click", exportBackup);
 els.importBackup.addEventListener("change", importBackup);
 els.loadDemo.addEventListener("click", loadDemoEvent);
 els.clearData.addEventListener("click", clearData);
+els.closeWelcome.addEventListener("click", closeWelcomeModal);
 window.addEventListener("online", renderConnectionStatus);
 window.addEventListener("offline", renderConnectionStatus);
 els.dateFilter.addEventListener("change", renderDashboard);
@@ -2392,6 +2804,7 @@ registerServiceWorker();
 setupFilters();
 renderTagGrid();
 render();
+showWelcomeModal();
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;

@@ -310,8 +310,15 @@
         <h2>Event History</h2>
         <div id="trialList" class="trial-list"></div>
 
-        <h2>Whole-Data Visualization Ideas</h2>
+        <h2>Whole-Data Views</h2>
         <div id="dataVizIdeas" class="idea-grid"></div>
+        <div id="dataViewContent" class="data-view-content"></div>
+
+        <h2>Layout Experiments</h2>
+        <div id="layoutExperiments" class="experiment-grid"></div>
+
+        <h2>Visualization Playground</h2>
+        <div id="vizPlayground" class="experiment-grid"></div>
 
         <h2>Party Profiles</h2>
         <div class="filter-row">
@@ -459,6 +466,16 @@
     <div class="update-toast hidden" id="updateToast">
       <span>New version available</span>
       <button id="reloadApp" type="button">Update</button>
+    </div>
+
+    <div class="modal-backdrop hidden" id="welcomeModal">
+      <section class="welcome-modal" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+        <header>
+          <h2 id="welcomeTitle">Welcome</h2>
+          <button class="secondary" id="closeWelcome" type="button">Close</button>
+        </header>
+        <p>Welcome, brave adventurer. The design of this app is chaotic and hectic and has a bunch of features that likely will get taken down. Thanks for looking into this. How this works is you'll fill in some blanks to name the event before you start it. You can watch a video, read a transcript, or use this as an onlooker of a confrontation or discussion really of any kind. Each clause in the conversation, or event as we call it, gets an intensity score. You tap the corresponding button between 0 and 10 as the clause is spoken. The app records the order and timing of each button. When you're done you can look through the various formats of data visualization and see what you learn. Feedback is welcome. You're invited to rip this to shreds and absolutely decimate my ego by texting them to me at 801-473-2751. The Hertz Model is the driving feature here. How the data is collected matters very little. You can save this as a web app on your phone and it will prompt you to update if there is a new version. More to come. I'll be adding the explanations of the parameters of each skill intensity here soon. This is the alpha male engaging in beta testing. I'm trying to keep the app with limited users for now as the intellectual property is not yet protected. Just remember, DATING SUCKS. - Stutters</p>
+      </section>
     </div>
 
     <div class="modal-backdrop hidden" id="tagModal">

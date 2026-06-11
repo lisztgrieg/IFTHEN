@@ -6,3 +6,4 @@ These should be carried forward until resolved, removed, or the user asks to sto
 - r2: Decide how recommended videos should be curated/imported.
 - r3: Define exact redundancy rules for comparing multiple scorers on the same video.
 - r4: Choose where the PWA files will be hosted for iPhone install/update.
+- r5: Add spider charts for profiles.
