@@ -15,7 +15,7 @@ const skills = [
 ];
 
 const storeKey = "communicationSkillsTracker:v1";
-const appVersion = "0.2.4";
+const appVersion = "0.2.5";
 const holdMs = 3000;
 const eventTagOptions = [
   "workplace", "family", "romantic", "public", "courtroom", "police", "mental health", "customer service",
@@ -401,6 +401,13 @@ function startTrial() {
   render();
 }
 
+function startTrialFromVideoPlay() {
+  if (activeTrial()) return activeTrial();
+  if (!els.videoUrl.value.trim()) return null;
+  startTrial();
+  return activeTrial();
+}
+
 function autoStartTrial() {
   if (!requireStartFields()) return null;
   const trial = {
@@ -540,19 +547,58 @@ function renderVideoEmbed() {
   if (!url) return;
   const youtubeId = youtubeIdFromUrl(url);
   if (youtubeId) {
+    loadYouTubeApi();
     const iframe = document.createElement("iframe");
-    iframe.src = `https://www.youtube.com/embed/${youtubeId}`;
+    iframe.id = `yt-${Date.now()}`;
+    iframe.src = `https://www.youtube.com/embed/${youtubeId}?enablejsapi=1`;
     iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
     iframe.allowFullscreen = true;
     els.videoEmbed.append(iframe);
+    attachYouTubePlayStart(iframe.id);
     return;
   }
+  const video = document.createElement("video");
+  video.controls = true;
+  video.src = url;
+  video.addEventListener("play", startTrialFromVideoPlay, { once: true });
+  video.addEventListener("error", () => renderVideoLink(url), { once: true });
+  els.videoEmbed.append(video);
+}
+
+function renderVideoLink(url) {
+  els.videoEmbed.innerHTML = "";
   const link = document.createElement("a");
   link.href = url;
   link.target = "_blank";
   link.rel = "noreferrer";
   link.textContent = url;
+  link.addEventListener("click", startTrialFromVideoPlay);
   els.videoEmbed.append(link);
+}
+
+function loadYouTubeApi() {
+  if (window.YT?.Player || document.querySelector("#youtubeIframeApi")) return;
+  const script = document.createElement("script");
+  script.id = "youtubeIframeApi";
+  script.src = "https://www.youtube.com/iframe_api";
+  document.head.append(script);
+}
+
+function attachYouTubePlayStart(iframeId) {
+  const createPlayer = () => {
+    if (!window.YT?.Player) {
+      window.setTimeout(createPlayer, 250);
+      return;
+    }
+    new YT.Player(iframeId, {
+      events: {
+        onStateChange(event) {
+          if (event.data === YT.PlayerState.PLAYING) startTrialFromVideoPlay();
+        }
+      }
+    });
+  };
+  createPlayer();
 }
 
 function youtubeIdFromUrl(url) {
@@ -1530,9 +1576,9 @@ function loadDemoEvent() {
 function renderReminderNotes() {
   const notes = [
     "r1: Define the final description/rules text for every skill button.",
-    "r4: Decide how recommended videos should be curated or imported.",
-    "r5: Define exact redundancy rules for comparing multiple scorers on the same video.",
-    "r7: Choose where the PWA files will be hosted for iPhone install/update."
+    "r2: Decide how recommended videos should be curated or imported.",
+    "r3: Define exact redundancy rules for comparing multiple scorers on the same video.",
+    "r4: Choose where the PWA files will be hosted for iPhone install/update."
   ];
   els.reminderNotes.innerHTML = notes.map((note) => `<p>${escapeHtml(note)}</p>`).join("");
 }
@@ -2155,9 +2201,8 @@ function escapeHtml(value) {
 function switchTab(tabName) {
   document.querySelectorAll(".tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === tabName));
   document.querySelector("#summaryPanel").classList.toggle("hidden", tabName !== "summary");
-  document.querySelector("#trialsPanel").classList.toggle("hidden", tabName !== "trials");
+  document.querySelector("#dataPanel").classList.toggle("hidden", tabName !== "data");
   document.querySelector("#creatorPanel").classList.toggle("hidden", tabName !== "creator");
-  document.querySelector("#participantsPanel").classList.toggle("hidden", tabName !== "participants");
   document.querySelector("#toolsPanel").classList.toggle("hidden", tabName !== "tools");
   document.querySelector("#sharedPanel").classList.toggle("hidden", tabName !== "shared");
 }
