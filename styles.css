@@ -113,6 +113,19 @@ h2 {
   gap: 8px;
 }
 
+.data-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.data-filter-summary {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .trial-actions {
   grid-column: 1 / -1;
   display: grid;
@@ -642,6 +655,36 @@ button:disabled {
 .trial-list {
   display: grid;
   gap: 10px;
+}
+
+.idea-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.idea-card {
+  display: grid;
+  gap: 5px;
+  padding: 9px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.idea-card h3,
+.idea-card p {
+  margin: 0;
+}
+
+.idea-card h3 {
+  font-size: 13px;
+}
+
+.idea-card p {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .trial-card {

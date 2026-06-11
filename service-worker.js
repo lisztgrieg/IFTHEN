@@ -1,4 +1,4 @@
-const CACHE_NAME = "ifthen-mobile-v7";
+const CACHE_NAME = "ifthen-mobile-v8";
 const APP_SHELL = [
   "./",
   "./index.html",

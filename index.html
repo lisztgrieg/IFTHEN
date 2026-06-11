@@ -229,8 +229,89 @@
       </section>
 
       <section class="dashboard hidden" id="dataPanel">
+        <h2>Data Filters</h2>
+        <div class="data-filter-grid">
+          <label class="field compact">
+            <span>Date range</span>
+            <select id="dataDateFilter">
+              <option value="all">All dates</option>
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+              <option value="90">Last 90 days</option>
+            </select>
+          </label>
+          <label class="field compact">
+            <span>Event tag</span>
+            <select id="dataTagFilter">
+              <option value="all">All tags</option>
+            </select>
+          </label>
+          <label class="field compact">
+            <span>Outcome</span>
+            <select id="dataOutcomeFilter">
+              <option value="all">All outcomes</option>
+            </select>
+          </label>
+          <label class="field compact">
+            <span>Party</span>
+            <select id="dataPartyFilter">
+              <option value="all">All parties</option>
+            </select>
+          </label>
+          <label class="field compact">
+            <span>Skill</span>
+            <select id="dataSkillFilter">
+              <option value="all">All skills</option>
+            </select>
+          </label>
+          <label class="field compact">
+            <span>5's</span>
+            <select id="dataFiveFilter">
+              <option value="all">All 5's</option>
+            </select>
+          </label>
+          <label class="field compact">
+            <span>Average</span>
+            <select id="dataAverageFilter">
+              <option value="all">Any average</option>
+              <option value="low">Below 5</option>
+              <option value="middle">5 to 7</option>
+              <option value="high">Above 7</option>
+            </select>
+          </label>
+          <label class="field compact">
+            <span>Floor</span>
+            <select id="dataFloorFilter">
+              <option value="all">Any floor</option>
+              <option value="passive">0 to 4.5</option>
+              <option value="five">5 to 6</option>
+              <option value="high">7 and up</option>
+            </select>
+          </label>
+          <label class="field compact">
+            <span>Peak</span>
+            <select id="dataPeakFilter">
+              <option value="all">Any peak</option>
+              <option value="low">Below 5</option>
+              <option value="medium">5 to 7.5</option>
+              <option value="extreme">8 and up</option>
+            </select>
+          </label>
+          <label class="field compact">
+            <span>Video</span>
+            <select id="dataVideoFilter">
+              <option value="all">All events</option>
+              <option value="with">With video</option>
+              <option value="without">Without video</option>
+            </select>
+          </label>
+        </div>
+        <p class="data-filter-summary" id="dataFilterSummary">Showing all completed events.</p>
         <h2>Event History</h2>
         <div id="trialList" class="trial-list"></div>
+
+        <h2>Whole-Data Visualization Ideas</h2>
+        <div id="dataVizIdeas" class="idea-grid"></div>
 
         <h2>Party Profiles</h2>
         <div class="filter-row">

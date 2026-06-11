@@ -15,7 +15,7 @@ const skills = [
 ];
 
 const storeKey = "communicationSkillsTracker:v1";
-const appVersion = "0.2.5";
+const appVersion = "0.2.6";
 const holdMs = 3000;
 const eventTagOptions = [
   "workplace", "family", "romantic", "public", "courtroom", "police", "mental health", "customer service",
@@ -113,6 +113,18 @@ const els = {
   categoryLineChart: document.querySelector("#categoryLineChart"),
   interactionAnalysis: document.querySelector("#interactionAnalysis"),
   categoryInteractionAnalysis: document.querySelector("#categoryInteractionAnalysis"),
+  dataDateFilter: document.querySelector("#dataDateFilter"),
+  dataTagFilter: document.querySelector("#dataTagFilter"),
+  dataOutcomeFilter: document.querySelector("#dataOutcomeFilter"),
+  dataPartyFilter: document.querySelector("#dataPartyFilter"),
+  dataSkillFilter: document.querySelector("#dataSkillFilter"),
+  dataFiveFilter: document.querySelector("#dataFiveFilter"),
+  dataAverageFilter: document.querySelector("#dataAverageFilter"),
+  dataFloorFilter: document.querySelector("#dataFloorFilter"),
+  dataPeakFilter: document.querySelector("#dataPeakFilter"),
+  dataVideoFilter: document.querySelector("#dataVideoFilter"),
+  dataFilterSummary: document.querySelector("#dataFilterSummary"),
+  dataVizIdeas: document.querySelector("#dataVizIdeas"),
   profileSelect: document.querySelector("#profileSelect"),
   compareA: document.querySelector("#compareA"),
   compareB: document.querySelector("#compareB"),
@@ -1439,13 +1451,131 @@ function pieColor(index) {
 }
 
 function renderTrials() {
-  const trials = completedTrials().sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt));
+  populateDataFilters();
+  const allTrials = completedTrials().sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt));
+  const trials = filteredDataTrials(allTrials);
+  renderDataFilterSummary(trials, allTrials);
+  renderDataVizIdeas();
   els.trialList.innerHTML = "";
   if (!trials.length) {
-    els.trialList.innerHTML = '<p class="empty">No completed events yet.</p>';
+    els.trialList.innerHTML = '<p class="empty">No completed events match these filters.</p>';
     return;
   }
   trials.forEach((trial) => els.trialList.append(trialCard(trial, false)));
+}
+
+function populateDataFilters() {
+  syncOptions(els.dataTagFilter, ["all", ...eventTagOptions], "All tags", (value) => value);
+  const outcomes = uniqueCompleted((trial) => trial.outcome).filter(Boolean);
+  syncOptions(els.dataOutcomeFilter, ["all", ...outcomes], "All outcomes", (value) => value);
+  const parties = uniqueCompleted((trial) => Object.values(trial.participants || {})).flat();
+  syncOptions(els.dataPartyFilter, ["all", ...[...new Set(parties)].filter(Boolean).sort()], "All parties", (value) => value);
+  syncOptions(els.dataSkillFilter, ["all", ...skills.map((skill) => skill.value)], "All skills", (value) => skillName(value));
+  syncOptions(els.dataFiveFilter, ["all", ...fiveCategories.map((category) => category.value)], "All 5's", (value) => value);
+}
+
+function uniqueCompleted(mapper) {
+  return [...new Set(completedTrials().flatMap((trial) => mapper(trial) || []))].sort();
+}
+
+function syncOptions(select, values, allLabel, labelFn) {
+  const current = select.value || "all";
+  select.innerHTML = "";
+  values.forEach((value) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value === "all" ? allLabel : labelFn(value);
+    select.append(option);
+  });
+  select.value = values.includes(current) ? current : "all";
+}
+
+function skillName(value) {
+  const skill = skills.find((item) => item.value === value);
+  return skill ? `${skill.value} ${skill.label}` : value;
+}
+
+function filteredDataTrials(trials) {
+  return trials.filter((trial) => {
+    if (!matchesDataDate(trial)) return false;
+    if (!matchesSelect(els.dataTagFilter.value, trial.tags || [])) return false;
+    if (!matchesValue(els.dataOutcomeFilter.value, trial.outcome)) return false;
+    if (!matchesSelect(els.dataPartyFilter.value, Object.values(trial.participants || {}))) return false;
+    if (!matchesSkill(trial)) return false;
+    if (!matchesFiveCategory(trial)) return false;
+    if (!matchesRange(els.dataAverageFilter.value, averageEvents(trial.events), { low: [null, 5], middle: [5, 7], high: [7, null] })) return false;
+    if (!matchesRange(els.dataFloorFilter.value, floorFor(trial.events), { passive: [0, 4.5], five: [5, 6], high: [7, null] })) return false;
+    if (!matchesRange(els.dataPeakFilter.value, peakFor(trial.events), { low: [null, 5], medium: [5, 7.5], extreme: [8, null] })) return false;
+    if (!matchesVideo(trial)) return false;
+    return true;
+  });
+}
+
+function matchesDataDate(trial) {
+  const days = els.dataDateFilter.value;
+  if (days === "all") return true;
+  const date = new Date(trial.eventDate || trial.startedAt);
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - Number(days));
+  return date >= cutoff;
+}
+
+function matchesValue(filter, value) {
+  return filter === "all" || value === filter;
+}
+
+function matchesSelect(filter, values) {
+  return filter === "all" || values.includes(filter);
+}
+
+function matchesSkill(trial) {
+  const filter = els.dataSkillFilter.value;
+  return filter === "all" || trial.events.some((event) => event.value === filter);
+}
+
+function matchesFiveCategory(trial) {
+  const filter = els.dataFiveFilter.value;
+  return filter === "all" || trial.events.some((event) => categoryFor(event) === filter);
+}
+
+function matchesRange(filter, value, ranges) {
+  if (filter === "all") return true;
+  if (value === null || Number.isNaN(value)) return false;
+  const [min, max] = ranges[filter];
+  return (min === null || value >= min) && (max === null || value < max);
+}
+
+function matchesVideo(trial) {
+  const filter = els.dataVideoFilter.value;
+  if (filter === "all") return true;
+  const hasVideo = Boolean(trial.video?.url);
+  return filter === "with" ? hasVideo : !hasVideo;
+}
+
+function renderDataFilterSummary(trials, allTrials) {
+  const nodes = trials.reduce((sum, trial) => sum + trial.events.length, 0);
+  els.dataFilterSummary.textContent = `Showing ${trials.length} of ${allTrials.length} completed events, ${nodes} nodes.`;
+}
+
+function renderDataVizIdeas() {
+  const ideas = [
+    ["Tag Frequency", "Which contexts show up most often."],
+    ["Tag To Outcome", "Which tags tend to appear with each final outcome."],
+    ["Party Radar", "Compare party skill profiles at a glance."],
+    ["Transition Network", "Show common skill-to-skill movement paths."],
+    ["Intensity By Tag", "Average score grouped by event context."],
+    ["Outcome Scatter", "Plot average and floor score against outcome."],
+    ["Intensity Timeline", "Show events as bands from low to high intensity."],
+    ["Party/Tag Heatmap", "Find which parties use which skills in each context."],
+    ["Scorer Agreement", "Compare redundancy when multiple users score the same video."],
+    ["Turning Points", "See where escalation shifts usually happen."]
+  ];
+  els.dataVizIdeas.innerHTML = ideas.map(([title, text]) => `
+    <article class="idea-card">
+      <h3>${escapeHtml(title)}</h3>
+      <p>${escapeHtml(text)}</p>
+    </article>
+  `).join("");
 }
 
 function toggleDescriptions() {
@@ -2213,6 +2343,9 @@ function setupFilters() {
     option.value = skill.value;
     option.textContent = `${skill.value} ${skill.label}`;
     els.buttonFilter.append(option);
+  });
+  document.querySelectorAll("#dataPanel select").forEach((select) => {
+    select.addEventListener("change", renderTrials);
   });
 }
 
