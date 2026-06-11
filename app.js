@@ -15,7 +15,7 @@ const skills = [
 ];
 
 const storeKey = "communicationSkillsTracker:v1";
-const appVersion = "0.2.3";
+const appVersion = "0.2.4";
 const holdMs = 3000;
 const eventTagOptions = [
   "workplace", "family", "romantic", "public", "courtroom", "police", "mental health", "customer service",
@@ -44,6 +44,7 @@ const state = loadState();
 let activeTrialId = state.activeTrialId;
 let holdTimer = null;
 let suppressNextClick = false;
+let tagModalIsFinishing = false;
 
 const els = {
   clientName: document.querySelector("#clientName"),
@@ -454,12 +455,24 @@ function requestFinishTrial() {
 }
 
 function openTagModal(finishing = false) {
+  tagModalIsFinishing = finishing;
   els.tagModal.classList.remove("hidden");
   els.finishFromTags.classList.toggle("hidden", !finishing);
+  els.closeTagModal.textContent = finishing ? "End and Record" : "Close";
 }
 
 function closeTagModal() {
   els.tagModal.classList.add("hidden");
+  tagModalIsFinishing = false;
+  els.closeTagModal.textContent = "Close";
+}
+
+function closeOrFinishTagModal() {
+  if (tagModalIsFinishing) {
+    finishAfterTags();
+    return;
+  }
+  closeTagModal();
 }
 
 function renderTagGrid() {
@@ -2174,7 +2187,7 @@ els.pauseTrial.addEventListener("click", togglePauseTrial);
 els.endTrial.addEventListener("click", requestFinishTrial);
 els.deleteTrial.addEventListener("click", deleteActiveTrial);
 els.openTagPicker.addEventListener("click", () => openTagModal(false));
-els.closeTagModal.addEventListener("click", closeTagModal);
+els.closeTagModal.addEventListener("click", closeOrFinishTagModal);
 els.saveTags.addEventListener("click", saveSelectedTags);
 els.finishFromTags.addEventListener("click", finishAfterTags);
 els.descriptionToggle.addEventListener("click", toggleDescriptions);
