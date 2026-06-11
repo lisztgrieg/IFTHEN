@@ -1,0 +1,25 @@
+{
+  "name": "!fThen Mobile",
+  "short_name": "!fThen",
+  "description": "A local-first Hertz scoring and confrontation skills tracking app.",
+  "start_url": "index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#1268b3",
+  "icons": [
+    {
+      "src": "icons/ifthen-logo.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>!fThen Mobile</title>
+    <meta name="theme-color" content="#1268b3">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="!fThen Mobile">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/ifthen-logo.png">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Skills Tracker</p>
+          <h1>Hertz Scoring</h1>
+        </div>
+        <button class="icon-button" id="exportCsv" type="button" aria-label="Export event summaries to CSV" title="Export CSV">
+          CSV
+        </button>
+      </header>
+
+      <section class="trial-panel" aria-label="Event setup">
+        <label class="field">
+          <span>Your Name</span>
+          <input id="clientName" autocomplete="name" placeholder="Enter your name">
+        </label>
+        <label class="field">
+          <span>Event name</span>
+          <input id="trialName" placeholder="Give the event a title">
+        </label>
+        <label class="field">
+          <span>Date</span>
+          <input id="eventDate" type="date">
+        </label>
+        <label class="field">
+          <span>Time</span>
+          <input id="eventTime" type="time">
+        </label>
+        <label class="field">
+          <span>Outcome</span>
+          <select id="eventOutcome">
+            <option value="">Select outcome</option>
+            <option value="Resolved">Resolved</option>
+            <option value="De-escalated">De-escalated</option>
+            <option value="Unresolved">Unresolved</option>
+            <option value="Escalated">Escalated</option>
+            <option value="Paused">Paused</option>
+            <option value="Intervention">Intervention</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Event tags</span>
+          <button class="secondary" id="openTagPicker" type="button">Choose Tags</button>
+        </label>
+        <div class="selected-tags" id="selectedTags">No tags selected</div>
+        <div class="trial-actions">
+          <button class="primary" id="startTrial" type="button">Start Event</button>
+          <button class="secondary" id="pauseTrial" type="button" disabled aria-label="Pause or resume event">⏸</button>
+          <button class="secondary" id="endTrial" type="button" disabled>Finish</button>
+          <button class="danger" id="deleteTrial" type="button" disabled>Delete Event</button>
+        </div>
+      </section>
+
+      <section class="status-strip" aria-live="polite">
+        <div>
+          <span class="stat-label">Active</span>
+          <strong id="activeTrialLabel">No trial</strong>
+        </div>
+        <div>
+          <span class="stat-label">Total taps</span>
+          <strong id="totalTaps">0</strong>
+        </div>
+        <div>
+          <span class="stat-label">Average</span>
+          <strong id="averageScore">0.00</strong>
+        </div>
+        <div>
+          <span class="stat-label">Floor Score</span>
+          <strong id="floorScore">None</strong>
+        </div>
+        <div>
+          <span class="stat-label">P1 Avg/Floor</span>
+          <strong id="partyOneScores">0.00 / None</strong>
+        </div>
+        <div>
+          <span class="stat-label">P2 Avg/Floor</span>
+          <strong id="partyTwoScores">0.00 / None</strong>
+        </div>
+      </section>
+
+      <section class="recorder" aria-label="Skill buttons">
+        <div class="party-headings">
+          <label class="field participant-field">
+            <span>Party</span>
+            <input id="participantOne" placeholder="Party 1" value="Party 1">
+          </label>
+          <button class="description-toggle" id="descriptionToggle" type="button">Description</button>
+          <label class="field participant-field">
+            <span>Party</span>
+            <input id="participantTwo" placeholder="Party 2" value="Party 2">
+          </label>
+        </div>
+        <div id="descriptionBox" class="description-box hidden"></div>
+        <div id="buttonStack" class="button-stack"></div>
+      </section>
+
+      <nav class="tabs" aria-label="Dashboard views">
+        <button class="tab active" data-tab="summary" type="button">Summary</button>
+        <button class="tab" data-tab="trials" type="button">Events</button>
+        <button class="tab" data-tab="creator" type="button">Creator</button>
+        <button class="tab" data-tab="participants" type="button">Parties</button>
+        <button class="tab" data-tab="tools" type="button">Tools</button>
+        <button class="tab" data-tab="shared" type="button">Shared</button>
+      </nav>
+
+      <section class="dashboard" id="summaryPanel">
+        <div class="filter-row">
+          <label class="field compact">
+            <span>Date range</span>
+            <select id="dateFilter">
+              <option value="all">All dates</option>
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+            </select>
+          </label>
+          <label class="field compact">
+            <span>Button</span>
+            <select id="buttonFilter">
+              <option value="all">All buttons</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="metric-grid">
+          <div class="metric">
+            <span>Events</span>
+            <strong id="metricTrials">0</strong>
+          </div>
+          <div class="metric">
+            <span>Nodes</span>
+            <strong id="metricEvents">0</strong>
+          </div>
+          <div class="metric">
+            <span>Average Score</span>
+            <strong id="metricAverage">0.00</strong>
+          </div>
+          <div class="metric">
+            <span>Floor Score</span>
+            <strong id="metricFloor">None</strong>
+          </div>
+          <div class="metric">
+            <span>P1 Avg/Floor</span>
+            <strong id="metricPartyOneScores">0.00 / None</strong>
+          </div>
+          <div class="metric">
+            <span>P2 Avg/Floor</span>
+            <strong id="metricPartyTwoScores">0.00 / None</strong>
+          </div>
+          <div class="metric">
+            <span>Mode</span>
+            <strong id="metricMode">None</strong>
+          </div>
+          <div class="metric">
+            <span>P1 Mode</span>
+            <strong id="metricModeP1">None</strong>
+          </div>
+          <div class="metric">
+            <span>P2 Mode</span>
+            <strong id="metricModeP2">None</strong>
+          </div>
+          <div class="metric">
+            <span>5 Mode</span>
+            <strong id="metricCategoryMode">None</strong>
+          </div>
+          <div class="metric">
+            <span>P1 5 Mode</span>
+            <strong id="metricCategoryModeP1">None</strong>
+          </div>
+          <div class="metric">
+            <span>P2 5 Mode</span>
+            <strong id="metricCategoryModeP2">None</strong>
+          </div>
+        </div>
+
+        <div class="chart-block">
+          <h2>Skill Proportions</h2>
+          <div id="pieChartRow" class="chart-row"></div>
+        </div>
+
+        <div class="chart-block">
+          <h2>Totals By Skill</h2>
+          <div id="barChartRow" class="chart-row"></div>
+        </div>
+
+        <div class="chart-block">
+          <h2>5's Proportions</h2>
+          <div id="categoryPieChartRow" class="chart-row"></div>
+        </div>
+
+        <div class="chart-block">
+          <h2>5's Totals</h2>
+          <div id="categoryBarChartRow" class="chart-row"></div>
+        </div>
+
+        <div class="chart-block">
+          <h2>Interaction Analysis</h2>
+          <div id="interactionAnalysis" class="analysis-grid"></div>
+        </div>
+
+        <div class="chart-block">
+          <h2>5's Interaction Analysis</h2>
+          <div id="categoryInteractionAnalysis" class="analysis-grid"></div>
+        </div>
+
+        <div class="chart-block">
+          <h2>Event Average Trend</h2>
+          <svg id="lineChart" class="line-chart" viewBox="0 0 360 160" role="img" aria-label="Average score over events"></svg>
+        </div>
+
+        <div class="chart-block">
+          <h2>5's Trend</h2>
+          <svg id="categoryLineChart" class="line-chart" viewBox="0 0 360 160" role="img" aria-label="5's average over events"></svg>
+        </div>
+      </section>
+
+      <section class="dashboard hidden" id="trialsPanel">
+        <h2>Event History</h2>
+        <div id="trialList" class="trial-list"></div>
+      </section>
+
+      <section class="dashboard hidden" id="participantsPanel">
+        <h2>Party Profiles</h2>
+        <div class="filter-row">
+          <label class="field compact">
+            <span>Profile</span>
+            <select id="profileSelect"></select>
+          </label>
+          <label class="field compact">
+            <span>Compare A</span>
+            <select id="compareA"></select>
+          </label>
+          <label class="field compact">
+            <span>Compare B</span>
+            <select id="compareB"></select>
+          </label>
+        </div>
+        <div id="profileDashboard" class="profile-grid"></div>
+        <div id="compareDashboard" class="profile-grid"></div>
+      </section>
+
+      <section class="dashboard hidden" id="creatorPanel">
+        <h2>Creator Live Scoring</h2>
+        <div class="filter-row">
+          <label class="field compact">
+            <span>Video URL</span>
+            <input id="videoUrl" placeholder="Paste YouTube or video link">
+          </label>
+        </div>
+        <div class="trial-actions">
+          <button class="primary" id="saveVideoMeta" type="button">Attach Video</button>
+          <button class="secondary" id="addRecommendedVideo" type="button">Add Recommended</button>
+          <button class="secondary" id="openOverlay" type="button">Open Overlay</button>
+          <button class="secondary" id="renderEmbed" type="button">Preview Video</button>
+        </div>
+        <div id="videoEmbed" class="video-embed"></div>
+        <div class="overlay-stage">
+          <div class="creator-hud">
+            <div>
+              <span>Nodes</span>
+              <strong id="creatorNodes">0</strong>
+            </div>
+            <div>
+              <span>Average</span>
+              <strong id="creatorAverage">0.00</strong>
+            </div>
+            <div>
+              <span>Peak</span>
+              <strong id="creatorPeak">None</strong>
+            </div>
+            <div>
+              <span>Mode</span>
+              <strong id="creatorMode">None</strong>
+            </div>
+          </div>
+          <div id="creatorTimeline" class="live-timeline"></div>
+          <div class="creator-pies">
+            <div class="mini-chart">
+              <h3>Live Counts</h3>
+              <div id="creatorBars" class="bar-chart"></div>
+            </div>
+            <div class="mini-chart">
+              <h3>Live Pie</h3>
+              <div class="pie-layout">
+                <svg id="creatorPie" class="pie-chart" viewBox="0 0 180 180"></svg>
+                <div id="creatorPieLegend" class="pie-legend"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-block">
+          <h2>Recommended Videos</h2>
+          <div id="recommendedVideos" class="trial-list"></div>
+        </div>
+        <div class="chart-block">
+          <h2>Redundancy Review</h2>
+          <div id="redundancyReview" class="analysis-grid"></div>
+        </div>
+      </section>
+
+      <section class="dashboard hidden" id="toolsPanel">
+        <h2>App Tools</h2>
+        <div class="metric-grid">
+          <div class="metric">
+            <span>App Version</span>
+            <strong id="appVersion">0.2.0</strong>
+          </div>
+          <div class="metric">
+            <span>Status</span>
+            <strong id="connectionStatus">Checking</strong>
+          </div>
+          <div class="metric">
+            <span>Last Saved</span>
+            <strong id="lastSaved">Never</strong>
+          </div>
+        </div>
+
+        <div class="chart-block">
+          <h2>Backup & Restore</h2>
+          <div class="tool-actions">
+            <button class="primary" id="exportBackup" type="button">Export Backup</button>
+            <label class="file-button">
+              Import Backup
+              <input id="importBackup" type="file" accept="application/json">
+            </label>
+            <button class="secondary" id="loadDemo" type="button">Load Demo Event</button>
+            <button class="danger" id="clearData" type="button">Clear App Data</button>
+          </div>
+        </div>
+
+        <div class="chart-block">
+          <h2>First-Time Setup</h2>
+          <div class="help-card">
+            <p>Enter a client name, name the event, optionally attach tags, an outcome, and a video link, then tap the first skill button to auto-start scoring.</p>
+            <p>Use Export Backup before deleting browser data or switching devices.</p>
+          </div>
+        </div>
+
+        <div class="chart-block">
+          <h2>Privacy</h2>
+          <div class="help-card">
+            <p>This MVP stores scoring data locally in this browser. It does not send event data to a central server unless you later add that feature.</p>
+          </div>
+        </div>
+
+        <div class="chart-block">
+          <h2>Install On iPhone</h2>
+          <div class="help-card">
+            <p>Open the hosted app in Safari, tap Share, then choose Add to Home Screen. Updates appear after you publish new files and the app detects a new service worker version.</p>
+          </div>
+        </div>
+
+        <div class="chart-block">
+          <h2>Reminder Notes</h2>
+          <div id="reminderNotes" class="reminder-list"></div>
+        </div>
+      </section>
+
+      <section class="dashboard hidden" id="sharedPanel">
+        <h2>Shared Pool</h2>
+        <p class="hint">Submit completed events manually. Admins can see who submitted each event.</p>
+        <div id="sharedList" class="trial-list"></div>
+      </section>
+    </main>
+
+    <div class="update-toast hidden" id="updateToast">
+      <span>New version available</span>
+      <button id="reloadApp" type="button">Update</button>
+    </div>
+
+    <div class="modal-backdrop hidden" id="tagModal">
+      <section class="tag-modal" role="dialog" aria-modal="true" aria-labelledby="tagModalTitle">
+        <header>
+          <h2 id="tagModalTitle">Event Tags</h2>
+          <button class="secondary" id="closeTagModal" type="button">Close</button>
+        </header>
+        <div class="tag-grid" id="tagGrid"></div>
+        <div class="trial-actions">
+          <button class="primary" id="saveTags" type="button">Save Tags</button>
+          <button class="secondary" id="finishFromTags" type="button">Finish Event</button>
+        </div>
+      </section>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

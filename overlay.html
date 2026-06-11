@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>!fThen Mobile Overlay</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #061018;
+        color: #fff;
+        font-family: Arial, Helvetica, sans-serif;
+        overflow: hidden;
+      }
+      .overlay {
+        width: 100vw;
+        height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 12px;
+        padding: 18px;
+      }
+      .hud {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 10px;
+      }
+      .hud div {
+        padding: 10px;
+        background: rgba(255,255,255,0.09);
+        border: 1px solid rgba(255,255,255,0.16);
+        border-radius: 8px;
+      }
+      .hud span {
+        display: block;
+        color: rgba(255,255,255,0.7);
+        font-size: 12px;
+      }
+      .hud strong { font-size: 22px; }
+      .timeline {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,0.14);
+        border-radius: 8px;
+        background: linear-gradient(#0a1722, #07111a);
+      }
+      svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .avatar {
+        position: absolute;
+        left: 18px;
+        width: 72px;
+        height: 72px;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        border: 3px solid rgba(255,255,255,0.78);
+        border-radius: 50%;
+        font-weight: 800;
+      }
+      .avatar.p1 { top: 28px; background: #1268b3; }
+      .avatar.p2 { top: 112px; background: #00856f; }
+      .avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .bottom {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .panel {
+        padding: 10px;
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.14);
+        border-radius: 8px;
+      }
+      .bars {
+        display: grid;
+        gap: 5px;
+      }
+      .bar {
+        display: grid;
+        grid-template-columns: 72px 1fr 36px;
+        gap: 8px;
+        align-items: center;
+        font-size: 12px;
+      }
+      .track {
+        height: 10px;
+        background: rgba(255,255,255,0.12);
+        border-radius: 99px;
+      }
+      .fill {
+        height: 100%;
+        background: #4b9cd3;
+        border-radius: 99px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="overlay">
+      <section class="hud">
+        <div><span>Event</span><strong id="eventName">None</strong></div>
+        <div><span>Nodes</span><strong id="nodes">0</strong></div>
+        <div><span>Average</span><strong id="average">0.00</strong></div>
+        <div><span>Peak</span><strong id="peak">None</strong></div>
+        <div><span>Mode</span><strong id="mode">None</strong></div>
+      </section>
+      <section class="timeline">
+        <div id="avatarOne" class="avatar p1">P1</div>
+        <div id="avatarTwo" class="avatar p2">P2</div>
+        <svg id="timeline" viewBox="0 0 1200 520"></svg>
+      </section>
+      <section class="bottom">
+        <div class="panel"><div id="bars" class="bars"></div></div>
+        <div class="panel"><div id="fiveBars" class="bars"></div></div>
+      </section>
+    </main>
+    <script>
+      const skills = [
+        ["0", 0, "Passivity"], [".5", 0.5, "Rapport"], ["1-4", 2.5, "Diplomacy"],
+        ["4.5", 4.5, "Restraint"], ["5", 5, "Information"], ["5.5", 5.5, "Correction"],
+        ["6", 6, "Moralization"], ["7", 7, "Dominance"], ["8", 8, "Aggression"],
+        ["8.5", 8.5, "Volume"], ["9", 9, "Force"], ["9.5", 9.5, "Lethality"], ["10", 10, "War"]
+      ];
+      function loadState() {
+        try { return JSON.parse(localStorage.getItem("communicationSkillsTracker:v1")) || {}; }
+        catch { return {}; }
+      }
+      function trialOf(state) {
+        const active = state.trials?.find((trial) => trial.id === state.activeTrialId && !trial.endedAt);
+        return active || (state.trials || []).filter((trial) => trial.endedAt).sort((a,b) => new Date(b.startedAt) - new Date(a.startedAt))[0];
+      }
+      function avg(events) {
+        return events.length ? events.reduce((sum, event) => sum + event.numeric, 0) / events.length : 0;
+      }
+      function mode(events) {
+        if (!events.length) return "None";
+        const counts = {};
+        events.forEach((event) => counts[event.value] = (counts[event.value] || 0) + 1);
+        return Object.entries(counts).sort((a,b) => b[1] - a[1])[0][0];
+      }
+      function category(event) {
+        if (event.numeric < 5) return "5 Down";
+        if (event.numeric === 5) return "5 Alone";
+        return "5 Up";
+      }
+      function renderBars(target, entries) {
+        const max = Math.max(1, ...entries.map(([, count]) => count));
+        target.innerHTML = entries.map(([label, count]) => `
+          <div class="bar"><span>${label}</span><div class="track"><div class="fill" style="width:${count / max * 100}%"></div></div><strong>${count}</strong></div>
+        `).join("");
+      }
+      function renderAvatar(el, name, fallback) {
+        el.innerHTML = "";
+        el.textContent = (name || fallback).slice(0, 2).toUpperCase();
+      }
+      function render() {
+        const state = loadState();
+        const trial = trialOf(state);
+        const events = trial?.events || [];
+        document.querySelector("#eventName").textContent = trial?.name || "None";
+        document.querySelector("#nodes").textContent = events.length;
+        document.querySelector("#average").textContent = avg(events).toFixed(2);
+        document.querySelector("#peak").textContent = events.length ? Math.max(...events.map((event) => event.numeric)) : "None";
+        document.querySelector("#mode").textContent = mode(events);
+        renderAvatar(document.querySelector("#avatarOne"), trial?.participants?.participant1, "P1");
+        renderAvatar(document.querySelector("#avatarTwo"), trial?.participants?.participant2, "P2");
+        const svg = document.querySelector("#timeline");
+        svg.innerHTML = '<path d="M80 470H1160M80 40V470" stroke="rgba(255,255,255,0.22)" fill="none"/>';
+        events.slice(-24).forEach((event, index, list) => {
+          const x = 110 + index * ((1040) / Math.max(1, list.length - 1));
+          const y = 470 - (event.numeric / 10) * 430;
+          const color = (event.participantKey || "participant1") === "participant2" ? "#00856f" : "#1268b3";
+          svg.insertAdjacentHTML("beforeend", `<circle cx="${x}" cy="${y}" r="18" fill="${color}"/><text x="${x}" y="${y + 5}" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">${event.value}</text>`);
+        });
+        const counts = Object.fromEntries(skills.map(([value]) => [value, 0]));
+        events.forEach((event) => counts[event.value] += 1);
+        renderBars(document.querySelector("#bars"), skills.map(([value,,label]) => [`${value} ${label}`, counts[value]]));
+        const cats = { "5 Down": 0, "5 Alone": 0, "5 Up": 0 };
+        events.forEach((event) => cats[category(event)] += 1);
+        renderBars(document.querySelector("#fiveBars"), Object.entries(cats));
+      }
+      render();
+      setInterval(render, 500);
+    </script>
+  </body>
+</html>
